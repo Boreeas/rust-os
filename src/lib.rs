@@ -13,8 +13,15 @@ use memory::*;
 
 #[no_mangle]
 pub extern fn rust_main(multiboot_information_addr: usize) {
-	println!("OS loaded");
-	println!("Multiboot information at 0x{:x}", multiboot_information_addr);
+	println!("");
+	set_color!(LIGHT_GRAY);
+	println!("               ########################");
+	print!("               #");
+	set_color!(CYAN);
+	print!("     BorOS v0.0.1     ");
+	set_color!(LIGHT_GRAY);
+	println!("#");
+	println!("               ########################");
 
 	let boot_info = unsafe{ multiboot2::load(multiboot_information_addr) };
 	let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
@@ -77,10 +84,6 @@ pub extern fn rust_main(multiboot_information_addr: usize) {
 		multiboot_start, multiboot_end,
 		memory_map_tag.memory_areas()
 	);
-
-	while let Some(frame) = alloc.alloc() {
-	    println!("{:?}", frame)
-	}
 }
 
 #[lang = "eh_personality"] extern fn eh_personality() {}

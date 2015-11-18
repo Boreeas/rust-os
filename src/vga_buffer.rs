@@ -11,6 +11,7 @@ const SCREEN_WIDTH: usize = 80;
 const SCREEN_HEIGHT: usize = 25;
 
 pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
+    row_position: 0,
     column_position: 0,
     color_code: Cell::new(ColorCode::new(Color::WHITE, Color::BLACK)),
     buffer: unsafe { Unique::new(0xb8000 as *mut _) } ,
@@ -64,7 +65,7 @@ pub enum Color {
     MAGENTA    = 5,
     BROWN      = 6,
     LIGHT_GRAY = 7,
-    DARKGRAY   = 8,
+    DARK_GRAY  = 8,
     LIGHT_BLUE = 9,
     LIGHT_GREEN= 10,
     LIGHT_CYAN = 11,
@@ -95,6 +96,7 @@ struct Buffer {
 }
 
 pub struct Writer {
+    row_position: usize,
     column_position: usize,
     color_code: Cell<ColorCode>,
     buffer: Unique<Buffer>,
@@ -103,6 +105,7 @@ pub struct Writer {
 impl Writer {
 	pub fn new() -> Writer {
 		Writer {
+            row_position: 0,
 	        column_position: 0,
 	        color_code: Cell::new(ColorCode::new(Color::LIGHT_GREEN, Color::BLACK)),
 	        buffer: unsafe { Unique::new(0xb8000 as *mut _) },
@@ -117,7 +120,7 @@ impl Writer {
                     self.new_line();
                 }
 
-                let row = SCREEN_HEIGHT - 1;
+                let row = self.row_position;
                 let col = self.column_position;
 
                 self.buffer().chars[row][col] = ScreenChar {
@@ -141,12 +144,17 @@ impl Writer {
     }
 
     fn new_line(&mut self) {
-	    for row in 0..(SCREEN_HEIGHT-1) {
-	        let buffer = self.buffer();
-	        buffer.chars[row] = buffer.chars[row + 1]
+        if self.row_position < SCREEN_HEIGHT - 1 { 
+            self.row_position += 1; 
+        } else {
+    	    for row in 0..(SCREEN_HEIGHT-1) {
+    	        let buffer = self.buffer();
+    	        buffer.chars[row] = buffer.chars[row + 1]
+    	    }
+    	    self.clear_row(SCREEN_HEIGHT-1);
 	    }
-	    self.clear_row(SCREEN_HEIGHT-1);
-	    self.column_position = 0;
+
+        self.column_position = 0;
 	}
 
 	fn clear_row(&mut self, row: usize) {
