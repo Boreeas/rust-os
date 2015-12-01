@@ -1,14 +1,18 @@
-#![feature(no_std, lang_items, unique, core_str_ext, const_fn, iter_cmp)]
+#![feature(no_std, lang_items, unique, core_str_ext, const_fn, iter_cmp, asm)]
 #![no_std]
 extern crate rlibc;
 extern crate spin;
 extern crate multiboot2;
 mod vga_buffer;
 mod memory;
+mod pic;
+mod keyboard;
 
 use core::ptr::Unique;
 use vga_buffer::WRITER as vga;
 use memory::*;
+use keyboard::Key::*;
+use keyboard::MetaKey::*;
 
 
 #[no_mangle]
@@ -84,6 +88,19 @@ pub extern fn rust_main(multiboot_information_addr: usize) {
 		multiboot_start, multiboot_end,
 		memory_map_tag.memory_areas()
 	);
+
+	let kb = keyboard::KEYBOARD.lock();
+	loop {
+		match kb.next_key() {
+			Meta(Esc)=> {
+				set_color!(CYAN);
+				println!("Until next time!");
+				break;
+			}
+			Meta(mk) => println!("Meta Key: {:?}", mk),
+			Char(c)  => println!("Char Read: {:?}", c)
+		}
+	}
 }
 
 #[lang = "eh_personality"] extern fn eh_personality() {}

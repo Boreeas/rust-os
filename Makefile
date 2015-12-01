@@ -1,5 +1,5 @@
 arch ?= x86_64
-target ?= x86_64-unknown-linux-gnu
+target ?= x86_64-unknown-none-gnu
 rust_os := target/$(target)/debug/libos.a
 kernel := build/kernel-$(arch).bin
 iso := build/os-$(arch).iso
