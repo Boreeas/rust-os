@@ -1,5 +1,5 @@
 use spin::Mutex;
-use pic::Port;
+use cpuio::Port;
 
 pub static KEYBOARD: Mutex<Keyboard> = Mutex::new(Keyboard::new());
 static LOOPUP_TABLE: [Input; 0] = [

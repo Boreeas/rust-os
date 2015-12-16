@@ -12,7 +12,7 @@ p3_table:
 p2_table:
     resb 4096
 stack_bottom:
-    resb 4096
+    resb 4096*16
 stack_top:
 
 
@@ -53,10 +53,6 @@ start:
 
     mov dword [VGA_BUF], 0x2f4b2f4f
     hlt
-
-
-
-
 
 
 setup_page_tables:

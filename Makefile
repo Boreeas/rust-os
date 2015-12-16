@@ -10,6 +10,9 @@ assembly_source_files := $(wildcard src/arch/$(arch)/*.asm)
 assembly_object_files := $(patsubst src/arch/$(arch)/%.asm, \
 	build/arch/$(arch)/%.o, $(assembly_source_files))
 
+.SUFFIXES:
+
+
 .PHONY: all clean run iso
 
 all: $(kernel)
@@ -19,6 +22,11 @@ clean:
 
 run: $(iso)
 	@qemu-system-x86_64 -hda $(iso)
+
+debug: $(iso)
+	@qemu-system-x86_64 -s -hda $(iso)
+
+show-asm: cargo-asm $(rust_os) $(assembly_object_files) $(linker_script)
 
 iso: $(iso)
 
@@ -32,9 +40,14 @@ $(iso): $(kernel) $(grub_cfg)
 $(kernel): cargo $(rust_os) $(assembly_object_files) $(linker_script)
 	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
-cargo:
-	@cargo rustc --target $(target) -- -Z no-landing-pads
+cargo: build/arch/$(arch)/libcpuid.a
+	@cargo rustc --target $(target) -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid
 
+cargo-asm:
+	@cargo rustc --target $(target) -- -Z no-landing-pads --emit asm
+
+build/arch/$(arch)/lib%.a: build/arch/$(arch)/%.o
+	@ar r $@ $<
 
 # compile assembly files
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm

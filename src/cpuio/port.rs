@@ -1,11 +1,11 @@
 use core::marker::PhantomData;
 
-pub trait PicValue {
+pub trait CpuIoValue {
 	unsafe fn write(port: u16, value: Self);
 	unsafe fn read(port: u16) -> Self;
 }
 
-impl PicValue for u8 {
+impl CpuIoValue for u8 {
 	unsafe fn write(port: u16, value: u8) {
 		asm!("outb %al, %dx" 
 			:
@@ -27,7 +27,7 @@ impl PicValue for u8 {
 	}
 }
 
-impl PicValue for u16 {
+impl CpuIoValue for u16 {
 	unsafe fn write(port: u16, value: u16) {
 		asm!("outw %ax, %dx"
 			:
@@ -49,7 +49,7 @@ impl PicValue for u16 {
 	}
 }
 
-impl PicValue for u32 {
+impl CpuIoValue for u32 {
 	unsafe fn write(port: u16, value: u32) {
 		asm!("outl %eax, %dx"
 			: 
@@ -71,12 +71,12 @@ impl PicValue for u32 {
 	}
 }
 
-pub struct Port<T: PicValue> {
+pub struct Port<T: CpuIoValue> {
 	port: u16,
 	_phantomdata: PhantomData<T>
 }
 
-impl <T: PicValue> Port<T> {
+impl <T: CpuIoValue> Port<T> {
 	pub const unsafe fn new(port: u16) -> Port<T> {
 		Port {
 			port: port,
@@ -96,3 +96,31 @@ impl <T: PicValue> Port<T> {
 		}
 	}
 }
+
+
+pub struct UnsafePort<T: CpuIoValue> {
+	port: u16,
+	_phantomdata: PhantomData<T>
+}
+
+impl <T: CpuIoValue> UnsafePort<T> {
+	pub const unsafe fn new(port: u16) -> UnsafePort<T> {
+		UnsafePort {
+			port: port,
+			_phantomdata: PhantomData
+		}
+	}
+
+	pub unsafe fn read(&self) -> T {
+		unsafe { 
+			T::read(self.port)
+		}
+	}
+
+	pub unsafe fn write(&self, value: T) {
+		unsafe {
+			T::write(self.port, value)
+		}
+	}
+}
+
