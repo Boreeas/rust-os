@@ -26,7 +26,7 @@ fn cpuid(id: u32) -> CpuIdResult {
 
 #[link(name = "cpuid")]
 extern {
-    pub fn internal_cpuid(code: u32, ptr: *mut CpuIdResult);
+    fn internal_cpuid(code: u32, ptr: *mut CpuIdResult);
 }
 
 

@@ -12,7 +12,7 @@ p3_table:
 p2_table:
     resb 4096
 stack_bottom:
-    resb 4096*16
+    resb 4096*32
 stack_top:
 
 
@@ -62,11 +62,11 @@ setup_page_tables:
 
     mov eax, p2_table
     or  eax, 0b11
-    mov [p4_table], eax
+    mov [p3_table], eax
 
     mov ecx, 0
 .map_p2_tables:
-    mov eax, 0x20000
+    mov eax, 0x200000
     mul ecx
     or  eax, 0b10000011 ; huge, present, writable
     mov [p2_table + ecx*8], eax
@@ -74,6 +74,10 @@ setup_page_tables:
     inc ecx
     cmp ecx, 512
     jne .map_p2_tables
+; recursively map p4 table
+    mov eax, p4_table
+    or  eax, 0b11 ; present, writable
+    mov [p4_table + 511*8], eax
 
     ret
 
