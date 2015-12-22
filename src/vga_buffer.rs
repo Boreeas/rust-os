@@ -13,6 +13,7 @@ const SCREEN_HEIGHT: usize = 25;
 pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
     row_position: 0,
     column_position: 0,
+    scroll_count: 0,
     color_code: Cell::new(ColorCode::new(Color::WHITE, Color::BLACK)),
     buffer: unsafe { Unique::new(0xb8000 as *mut _) } ,
 });
@@ -28,6 +29,15 @@ macro_rules! print {
             use core::fmt::Write;
             $crate::vga_buffer::WRITER.lock().write_fmt(format_args!($($arg)*)).unwrap();
     });
+}
+
+macro_rules! log {
+    ($msg:expr) => ({
+        let mut line = $crate::vga_buffer::WRITER.lock().get_line();
+        set_color!(LIGHT_GRAY);
+        line.write($msg);
+        line
+    })
 }
 
 macro_rules! set_color {
@@ -84,6 +94,57 @@ impl ColorCode {
 	}
 }
 
+struct Line {
+    row: usize,
+    col: usize,
+    creation_point: u32
+}
+
+impl Line {
+    pub fn write(&mut self, msg: &str) {
+        let col = self.col;
+        self.write_at(msg, col);
+        self.col += msg.len();
+    }
+
+    pub fn write_at(&self, msg: &str, mut offset: usize) {
+        let mut w = WRITER.lock();
+        let time_delta = w.scroll_count - self.creation_point;
+        let real_row = self.row - time_delta as usize;
+
+        if real_row < 0 || real_row >= SCREEN_HEIGHT {
+            return; // Offscreen
+        }
+
+        for byte in msg.bytes() {
+            w.write_byte_at(byte, real_row, offset);
+            offset += 1;
+
+            if offset >= SCREEN_WIDTH {
+                return; // Offscreen
+            }
+        }
+    }
+
+    pub fn ok(&self) {
+        set_color!(WHITE);
+        self.write_at("[", SCREEN_WIDTH - 7);
+        set_color!(GREEN);
+        self.write_at("OK", SCREEN_WIDTH - 5);
+        set_color!(WHITE);
+        self.write_at("]", SCREEN_WIDTH - 2);
+    }
+
+    pub fn fail(&self) {
+        set_color!(WHITE);
+        self.write_at("[", SCREEN_WIDTH - 7);
+        set_color!(GREEN);
+        self.write_at("FAIL", SCREEN_WIDTH - 6);
+        self.write_at("]", SCREEN_WIDTH - 2);
+    }
+}
+
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct ScreenChar {
@@ -100,6 +161,7 @@ pub struct Writer {
     column_position: usize,
     color_code: Cell<ColorCode>,
     buffer: Unique<Buffer>,
+    scroll_count: u32 // 4 billion lines ought to be enough for everybody
 }
 
 impl Writer {
@@ -107,6 +169,7 @@ impl Writer {
 		Writer {
             row_position: 0,
 	        column_position: 0,
+            scroll_count: 0,
 	        color_code: Cell::new(ColorCode::new(Color::LIGHT_GREEN, Color::BLACK)),
 	        buffer: unsafe { Unique::new(0xb8000 as *mut _) },
     	}
@@ -123,12 +186,25 @@ impl Writer {
                 let row = self.row_position;
                 let col = self.column_position;
 
-                self.buffer().chars[row][col] = ScreenChar {
-                    character: byte,
-                    color_code: self.color_code.get(),
-                };
+                self.write_byte_at(byte, row, col);
                 self.column_position += 1;
             }
+        }
+    }
+
+    pub fn write_byte_at(&mut self, byte: u8, row: usize, col: usize) {
+        self.buffer().chars[row][col] = ScreenChar {
+            character: byte,
+            color_code: self.color_code.get(),
+        };
+    }
+
+    pub fn get_line(&mut self) -> Line {
+        self.new_line();
+        Line {
+            row: self.row_position - 1,
+            col: 0,
+            creation_point: self.scroll_count
         }
     }
 
@@ -136,6 +212,7 @@ impl Writer {
     	for row in 0..(SCREEN_HEIGHT-1) {
     		self.clear_row(row)
     	}
+        self.scroll_count += SCREEN_HEIGHT as u32;
     }
 
 
@@ -152,6 +229,7 @@ impl Writer {
     	        buffer.chars[row] = buffer.chars[row + 1]
     	    }
     	    self.clear_row(SCREEN_HEIGHT-1);
+            self.scroll_count+=1;
 	    }
 
         self.column_position = 0;
