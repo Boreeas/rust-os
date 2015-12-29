@@ -53,13 +53,13 @@ $(kernel): cargo $(rust_os) $(assembly_object_files) $(linker_script)
 $(kernel)-release: cargo-release $(rust_os) $(assembly_object_files) $(linker_script)
 	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
-libs: build/arch/$(arch)/libcpuid.a
+libs: build/arch/$(arch)/libcpuid.a build/arch/$(arch)/libinterrupts.a
 
 cargo-release: libs
-	@cargo rustc --target $(target) --release -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid
+	@cargo rustc --target $(target) --release -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid -linterrupts
 
 cargo: libs
-	@cargo rustc --target $(target) -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid
+	@cargo rustc --target $(target) -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid -linterrupts
 
 cargo-asm:
 	@cargo rustc --target $(target) -- -Z no-landing-pads --emit asm

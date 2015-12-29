@@ -1,7 +1,8 @@
 use core::ptr::Unique;
 use memory::FrameAllocator;
 use memory::PAGE_SIZE;
-use memory::Frame;
+use spin::Mutex;
+pub use memory::Frame;
 
 mod entry;
 mod table;
@@ -13,8 +14,8 @@ pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;
 
 
-
-pub const P4_TABLE: PageTableHead = unsafe { PageTableHead::new() };
+const P4_TABLE: PageTableHead = unsafe { PageTableHead::new() };
+pub const P4_TABLE_EXCL: Mutex<PageTableHead> = Mutex::new(P4_TABLE);
 
 
 
@@ -35,6 +36,17 @@ impl Page {
              "Invalid address 0x{:x}", addr);
 
         Page { number: addr / PAGE_SIZE }
+    }
+
+    fn for_table_indices(p4: usize, p3: usize, p2: usize, p1: usize) -> Page {
+        assert!(p4 < ENTRY_COUNT 
+            && p3 < ENTRY_COUNT 
+            && p2 < ENTRY_COUNT 
+            && p1 < ENTRY_COUNT);
+
+        Page {
+            number: (p4 << 27) | (p3 << 18) | (p2 << 9) | p1 
+        }
     }
 
     pub fn first_addr(&self) -> VirtualAddress {
@@ -151,7 +163,7 @@ impl PageTableHead {
         let mut p1 = p2.next_table_create(page.p2_index(), allocator);
 
         assert!(p1[page.p1_index()].is_unused());
-        p1[page.p1_index()].set(frame, flags | PRESENT);
+        p1[page.p1_index()].set(frame, flags | PRESENT | WRITEABLE);
     }
 
     fn map<A>(&mut self, page: &Page, flags: EntryFlags, allocator: &mut A)
@@ -184,4 +196,43 @@ impl PageTableHead {
         // TODO free p(1,2,3) table if empty
         alloc.dealloc(frame);
     }
+}
+
+pub fn simple_id_map<A: FrameAllocator>(frame: Frame, alloc: &mut A) {
+    P4_TABLE.identity_map(frame, EntryFlags::empty(), alloc)
+}
+
+pub fn alloc_any<A>(alloc: &mut A) -> &'static mut [u8; PAGE_SIZE] where A: FrameAllocator {
+    let mutex = P4_TABLE_EXCL;
+    let table_head = mutex.lock();
+    let p4 = table_head.get_p4();
+
+    for p4_idx in 0..ENTRY_COUNT {
+        if let Some(p3) = p4.next_table(p4_idx) { 
+            for p3_idx in 0..ENTRY_COUNT {
+                if let Some(p2) = p3.next_table(p3_idx) {
+                    for p2_idx in 0..ENTRY_COUNT {
+                        if let Some(p1) = p2.next_table(p2_idx) {
+                            for p1_idx in 0..ENTRY_COUNT {
+                                if p1[p1_idx].is_unused() {
+                                    let page = Page::for_table_indices(
+                                        p4_idx, 
+                                        p3_idx, 
+                                        p2_idx, 
+                                        p1_idx
+                                    );
+                                    P4_TABLE.map(&page, EntryFlags::empty(), alloc);
+                                    return unsafe {
+                                        &mut *((page.number * PAGE_SIZE) as *mut _) 
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } 
+    }
+
+    panic!("Out of memory");
 }

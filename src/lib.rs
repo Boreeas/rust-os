@@ -13,8 +13,6 @@ mod cpuio;
 mod keyboard;
 mod cpuid;
 
-use core::ptr::Unique;
-use vga_buffer::WRITER as vga;
 use memory::*;
 use keyboard::Key::*;
 use keyboard::MetaKey::*;
@@ -88,15 +86,14 @@ pub extern fn rust_main(multiboot_information_addr: usize) {
     set_color!(LIGHT_GRAY);
     println!("]");
 
-    let mut alloc = memory::AreaFrameAllocator::new(
+    let mut alloc = AreaFrameAllocator::new(
         kernel_start as usize, kernel_end as usize, 
         multiboot_start, multiboot_end,
+        cpuio::APIC_ADDRESS_BASE,
         memory_map_tag.memory_areas()
     );
 
-    set_color!(LIGHT_GRAY);
-
-    cpuio::setup_apic();
+    cpuio::setup_apic(&mut alloc);
 
 
 

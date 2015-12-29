@@ -1,6 +1,3 @@
-use core::fmt::Display;
-
-
 #[repr(C, packed)]
 struct CpuIdResult {
     eax: u32,
@@ -79,9 +76,9 @@ impl Vendor {
 pub fn get_vendor() -> Vendor {
     let CpuIdResult {
         eax: _,
-        ebx: ebx,
-        ecx: ecx,
-        edx: edx
+        ebx,
+        ecx,
+        edx
     } = cpuid(0);
 
     let buf = [
@@ -172,8 +169,8 @@ pub fn get_features() -> Features {
     let CpuIdResult {
         eax: _,
         ebx: _,
-        ecx: ecx,
-        edx: edx
+        ecx,
+        edx
     } = cpuid(1);
 
     Features::from_bits((ecx as u64) << 32 | (edx as u64)).unwrap()

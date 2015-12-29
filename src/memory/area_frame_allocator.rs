@@ -9,6 +9,7 @@ pub struct AreaFrameAllocator {
     kernel_end: Frame,
     multiboot_start: Frame,
     multiboot_end: Frame,
+    apic_frame: Frame
 }
 
 trait MemoryAreaExt {
@@ -29,6 +30,7 @@ impl MemoryAreaExt for MemoryArea {
 impl AreaFrameAllocator {
     pub fn new(kernel_start: usize, kernel_end: usize,
         multiboot_start: usize, multiboot_end: usize,
+        apic_loc: usize,
         memory_areas: MemoryAreaIter) -> AreaFrameAllocator {
 
         let mut alloc = AreaFrameAllocator {
@@ -38,7 +40,8 @@ impl AreaFrameAllocator {
             kernel_start: Frame::for_address(kernel_start),
             kernel_end: Frame::for_address(kernel_end),
             multiboot_start: Frame::for_address(multiboot_start),
-            multiboot_end: Frame::for_address(multiboot_end)
+            multiboot_end: Frame::for_address(multiboot_end),
+            apic_frame: Frame::for_address(apic_loc)
         };
 
         alloc.choose_next_area();
@@ -79,6 +82,8 @@ impl FrameAllocator for AreaFrameAllocator {
                 self.next_free_frame = self.kernel_end.next();
             } else if self.next_free_frame >= self.multiboot_start && self.next_free_frame <= self.multiboot_end {
                 self.next_free_frame = self.multiboot_end.next();
+            } else if self.next_free_frame == self.apic_frame {
+                self.next_free_frame = self.apic_frame.next()
             } else {
                 break;
             }

@@ -1,6 +1,6 @@
 pub use self::area_frame_allocator::AreaFrameAllocator;
 mod area_frame_allocator;
-mod paging;
+pub mod paging;
 
 pub const PAGE_SIZE: usize = 4096;
 
@@ -40,6 +40,7 @@ pub trait FrameAllocator {
 	fn alloc(&mut self) -> Option<Frame>;
 	fn dealloc(&mut self, frame: Frame);
 }
+
 
 #[test]
 fn test_frame() {
