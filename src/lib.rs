@@ -1,11 +1,18 @@
-#![feature(no_std, lang_items, unique, core_str_ext, const_fn, iter_cmp, asm, slice_patterns)]
+#![feature(lang_items, unique, slice_patterns)]
+#![feature(const_fn, asm, naked_functions)]
+#![feature(iter_min_by)]
+
 #![no_std]
+#![allow(dead_code)]
+
 extern crate rlibc;
 extern crate spin;
 extern crate multiboot2;
 extern crate x86;
 #[macro_use]
 extern crate bitflags;
+#[macro_use]
+extern crate lazy_static;
 
 mod vga_buffer;
 mod memory;
@@ -19,7 +26,7 @@ use keyboard::MetaKey::*;
 
 
 #[no_mangle]
-pub extern fn rust_main(multiboot_information_addr: usize) {
+pub extern "C" fn rust_main(multiboot_information_addr: usize) {
     println!("");
     set_color!(LIGHT_GRAY);
     println!("               ########################");
@@ -30,25 +37,23 @@ pub extern fn rust_main(multiboot_information_addr: usize) {
     println!("#");
     println!("               ########################");
 
-    let boot_info = unsafe{ multiboot2::load(multiboot_information_addr) };
+    let boot_info = unsafe { multiboot2::load(multiboot_information_addr) };
     let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
-    
-    /*
-    println!("memory areas:");
-    for area in memory_map_tag.memory_areas() {
-        println!("    start: 0x{:x}, length: 0x{:x}", area.base_addr, area.length);
-    }
-    */
+
+    // println!("memory areas:");
+    // for area in memory_map_tag.memory_areas() {
+    // println!("    start: 0x{:x}, length: 0x{:x}", area.base_addr, area.length);
+    // }
+    //
 
     let elf_sections_tag = boot_info.elf_sections_tag().expect("Elf-sections tag required");
 
-    /*
-    println!("kernel sections:");
-    for section in elf_sections_tag.sections() {
-        println!("    addr: 0x{:x}, size: 0x{:x}, flags: 0x{:x}",
-            section.addr, section.size, section.flags);
-    }
-    */
+    // println!("kernel sections:");
+    // for section in elf_sections_tag.sections() {
+    // println!("    addr: 0x{:x}, size: 0x{:x}, flags: 0x{:x}",
+    // section.addr, section.size, section.flags);
+    // }
+    //
 
     let kernel_start = elf_sections_tag.sections().map(|sect| sect.addr).min().unwrap();
     let kernel_end = elf_sections_tag.sections().map(|sect| sect.addr + sect.size).max().unwrap();
@@ -86,17 +91,18 @@ pub extern fn rust_main(multiboot_information_addr: usize) {
     set_color!(LIGHT_GRAY);
     println!("]");
 
-    let mut alloc = AreaFrameAllocator::new(
-        kernel_start as usize, kernel_end as usize, 
-        multiboot_start, multiboot_end,
-        cpuio::APIC_ADDRESS_BASE,
-        memory_map_tag.memory_areas()
-    );
+    let mut alloc = AreaFrameAllocator::new(kernel_start as usize,
+                                            kernel_end as usize,
+                                            multiboot_start,
+                                            multiboot_end,
+                                            cpuio::APIC_ADDRESS_BASE,
+                                            memory_map_tag.memory_areas());
+
+    // cpuio::setup_apic(&mut alloc);
+
+
 
     cpuio::setup_apic(&mut alloc);
-
-
-
     let kb = keyboard::KEYBOARD.lock();
     loop {
         match kb.next_key() {
@@ -119,18 +125,34 @@ pub extern fn rust_main(multiboot_information_addr: usize) {
                 set_color!(CYAN);
                 println!("CPU Features are {:?}", cpuid::get_features());
             }
+            Char('t') => {
+                set_color!(LIGHT_GRAY);
+                println!("> trigger");
+                set_color!(CYAN);
+                println!("Triggering division-by-zero");
+                unsafe {
+                    asm! (
+                        "mov eax, 0\nmov ebx, 0\ndiv ebx"
+                        :
+                        :
+                        : "eax"
+                        : "intel"
+                    )
+                }
+            }
             _ => {}
-            //Meta(mk) => println!("Meta Key: {:?}", mk),
-            //Char(c)  => println!("Char Read: {:?}", c)
+            // Meta(mk) => println!("Meta Key: {:?}", mk),
+            // Char(c)  => println!("Char Read: {:?}", c)
         }
     }
 
 }
 
-#[lang = "eh_personality"] extern fn eh_personality() {}
+#[lang = "eh_personality"]
+extern "C" fn eh_personality() {}
 
 #[lang = "panic_fmt"]
-extern fn panic_fmt(fmt: core::fmt::Arguments, file: &str, line: u32) -> ! {
+extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &str, line: u32) -> ! {
     set_color!(RED);
     print!("\n\nPANIC in ");
     set_color!(LIGHT_GRAY);
@@ -141,5 +163,5 @@ extern fn panic_fmt(fmt: core::fmt::Arguments, file: &str, line: u32) -> ! {
     print!("{}", line);
     set_color!(RED);
     println!(":\n    {}", fmt);
-    loop{}
+    loop {}
 }

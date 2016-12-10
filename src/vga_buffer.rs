@@ -15,7 +15,7 @@ pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
     column_position: 0,
     scroll_count: 0,
     color_code: Cell::new(ColorCode::new(Color::WHITE, Color::BLACK)),
-    buffer: unsafe { Unique::new(0xb8000 as *mut _) } ,
+    buffer: unsafe { Unique::new(0xb8000 as *mut _) },
 });
 
 
@@ -66,38 +66,39 @@ macro_rules! reset_color {
 
 
 #[repr(u8)]
+#[allow(non_camel_case_types)]
 pub enum Color {
-	BLACK      = 0,
-    BLUE       = 1,
-    GREEN      = 2,
-    CYAN       = 3,
-    RED        = 4,
-    MAGENTA    = 5,
-    BROWN      = 6,
+    BLACK = 0,
+    BLUE = 1,
+    GREEN = 2,
+    CYAN = 3,
+    RED = 4,
+    MAGENTA = 5,
+    BROWN = 6,
     LIGHT_GRAY = 7,
-    DARK_GRAY  = 8,
+    DARK_GRAY = 8,
     LIGHT_BLUE = 9,
-    LIGHT_GREEN= 10,
+    LIGHT_GREEN = 10,
     LIGHT_CYAN = 11,
-    LIGHT_RED  = 12,
-    PINK       = 13,
-    YELLOW     = 14,
-    WHITE      = 15,
+    LIGHT_RED = 12,
+    PINK = 13,
+    YELLOW = 14,
+    WHITE = 15,
 }
 
 #[derive(Clone,Copy)]
 pub struct ColorCode(u8);
 
 impl ColorCode {
-	pub const fn new(foreground: Color, background: Color) -> ColorCode {
-		ColorCode((background as u8) << 4 | (foreground as u8))
-	}
+    pub const fn new(foreground: Color, background: Color) -> ColorCode {
+        ColorCode((background as u8) << 4 | (foreground as u8))
+    }
 }
 
-struct Line {
+pub struct Line {
     row: usize,
     col: usize,
-    creation_point: u32
+    creation_point: u32,
 }
 
 impl Line {
@@ -109,10 +110,13 @@ impl Line {
 
     pub fn write_at(&self, msg: &str, mut offset: usize) {
         let mut w = WRITER.lock();
-        let time_delta = w.scroll_count - self.creation_point;
-        let real_row = self.row - time_delta as usize;
+        let time_delta = (w.scroll_count - self.creation_point) as usize;
+        if self.row < time_delta {
+            return; // Offscreen
+        }
 
-        if real_row < 0 || real_row >= SCREEN_HEIGHT {
+        let real_row = self.row - time_delta;
+        if real_row >= SCREEN_HEIGHT {
             return; // Offscreen
         }
 
@@ -148,12 +152,12 @@ impl Line {
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct ScreenChar {
-	character: u8,
-	color_code: ColorCode
+    character: u8,
+    color_code: ColorCode,
 }
 
 struct Buffer {
-	chars: [[ScreenChar; SCREEN_WIDTH]; SCREEN_HEIGHT]
+    chars: [[ScreenChar; SCREEN_WIDTH]; SCREEN_HEIGHT],
 }
 
 pub struct Writer {
@@ -161,19 +165,19 @@ pub struct Writer {
     column_position: usize,
     color_code: Cell<ColorCode>,
     buffer: Unique<Buffer>,
-    scroll_count: u32 // 4 billion lines ought to be enough for everybody
+    scroll_count: u32, // 4 billion lines ought to be enough for everybody
 }
 
 impl Writer {
-	pub fn new() -> Writer {
-		Writer {
+    pub fn new() -> Writer {
+        Writer {
             row_position: 0,
-	        column_position: 0,
+            column_position: 0,
             scroll_count: 0,
-	        color_code: Cell::new(ColorCode::new(Color::LIGHT_GREEN, Color::BLACK)),
-	        buffer: unsafe { Unique::new(0xb8000 as *mut _) },
-    	}
-	}
+            color_code: Cell::new(ColorCode::new(Color::LIGHT_GREEN, Color::BLACK)),
+            buffer: unsafe { Unique::new(0xb8000 as *mut _) },
+        }
+    }
 
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
@@ -204,61 +208,61 @@ impl Writer {
         Line {
             row: self.row_position - 1,
             col: 0,
-            creation_point: self.scroll_count
+            creation_point: self.scroll_count,
         }
     }
 
     pub fn clear_screen(&mut self) {
-    	for row in 0..(SCREEN_HEIGHT-1) {
-    		self.clear_row(row)
-    	}
+        for row in 0..(SCREEN_HEIGHT - 1) {
+            self.clear_row(row)
+        }
         self.scroll_count += SCREEN_HEIGHT as u32;
     }
 
 
     fn buffer(&mut self) -> &mut Buffer {
-        unsafe{ self.buffer.get_mut() }
+        unsafe { self.buffer.get_mut() }
     }
 
     fn new_line(&mut self) {
-        if self.row_position < SCREEN_HEIGHT - 1 { 
-            self.row_position += 1; 
+        if self.row_position < SCREEN_HEIGHT - 1 {
+            self.row_position += 1;
         } else {
-    	    for row in 0..(SCREEN_HEIGHT-1) {
-    	        let buffer = self.buffer();
-    	        buffer.chars[row] = buffer.chars[row + 1]
-    	    }
-    	    self.clear_row(SCREEN_HEIGHT-1);
-            self.scroll_count+=1;
-	    }
+            for row in 0..(SCREEN_HEIGHT - 1) {
+                let buffer = self.buffer();
+                buffer.chars[row] = buffer.chars[row + 1]
+            }
+            self.clear_row(SCREEN_HEIGHT - 1);
+            self.scroll_count += 1;
+        }
 
         self.column_position = 0;
-	}
+    }
 
-	fn clear_row(&mut self, row: usize) {
-	    let blank = ScreenChar {
-	        character: b' ',
-	        color_code: self.color_code.get(),
-	    };
-	    self.buffer().chars[row] = [blank; SCREEN_WIDTH];
-	}
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            character: b' ',
+            color_code: self.color_code.get(),
+        };
+        self.buffer().chars[row] = [blank; SCREEN_WIDTH];
+    }
 }
 
 impl Write for Writer {
     fn write_str(&mut self, s: &str) -> Result {
-	    for byte in s.bytes() {
-	      self.write_byte(byte)
-	    }
+        for byte in s.bytes() {
+            self.write_byte(byte)
+        }
 
-	    Ok(())
-	}
+        Ok(())
+    }
 }
 
 pub fn clear_screen() {
-	WRITER.lock().clear_screen()
+    WRITER.lock().clear_screen()
 }
 
 
 pub fn switch_color(front: Color, back: Color) {
-	WRITER.lock().color_code.set(ColorCode::new(front, back))
+    WRITER.lock().color_code.set(ColorCode::new(front, back))
 } 

@@ -1,4 +1,4 @@
-use core::ops::{Index,IndexMut};
+use core::ops::{Index, IndexMut};
 use core::marker::PhantomData;
 use memory::paging::entry::*;
 use memory::FrameAllocator;
@@ -7,7 +7,7 @@ pub const ENTRY_COUNT: usize = 512; // Entries in a page table
 
 pub const P4_TABLE_MASK: usize = 0o177777_777_777_777_777_0000;
 pub const P3_TABLE_MASK: usize = 0o177777_777_777_777_000_0000;
-//                                                    ^ index into p4
+// ^ index into p4
 pub const P2_TABLE_MASK: usize = 0o177777_777_777_000_000_0000;
 //                                                ^   ^ index into p3
 //                                                \ index into p4
@@ -45,10 +45,11 @@ impl HierarchicalLevel for Level2 {
 
 pub struct PageTable<Lvl: TableLevel> {
     entries: [Entry; ENTRY_COUNT],
-    _marker: PhantomData<Lvl>
+    _marker: PhantomData<Lvl>,
 }
 
-impl <Lvl> Index<usize> for PageTable<Lvl> where Lvl: TableLevel {
+impl<Lvl> Index<usize> for PageTable<Lvl> where Lvl: TableLevel
+{
     type Output = Entry;
 
     fn index(&self, idx: usize) -> &Entry {
@@ -56,13 +57,15 @@ impl <Lvl> Index<usize> for PageTable<Lvl> where Lvl: TableLevel {
     }
 }
 
-impl <Lvl> IndexMut<usize> for PageTable<Lvl> where Lvl: TableLevel {
+impl<Lvl> IndexMut<usize> for PageTable<Lvl> where Lvl: TableLevel
+{
     fn index_mut(&mut self, idx: usize) -> &mut Entry {
         &mut self.entries[idx]
     }
 }
 
-impl <Lvl> PageTable<Lvl> where Lvl: TableLevel {
+impl<Lvl> PageTable<Lvl> where Lvl: TableLevel
+{
     fn zero(&mut self) {
         for i in 0..ENTRY_COUNT {
             self.entries[i].set_unused();
@@ -70,8 +73,8 @@ impl <Lvl> PageTable<Lvl> where Lvl: TableLevel {
     }
 }
 
-impl <Lvl> PageTable<Lvl> where Lvl: HierarchicalLevel {
-
+impl<Lvl> PageTable<Lvl> where Lvl: HierarchicalLevel
+{
     fn next_table_address(&self, idx: usize) -> Option<usize> {
         let flags = self.entries[idx].flags();
         if flags.contains(PRESENT) && !flags.contains(HUGE_PAGE) {
@@ -83,16 +86,16 @@ impl <Lvl> PageTable<Lvl> where Lvl: HierarchicalLevel {
     }
 
     pub fn next_table(&self, idx: usize) -> Option<&PageTable<Lvl::Next>> {
-        self.next_table_address(idx).map(|addr| unsafe { &*(addr as *const _)})
+        self.next_table_address(idx).map(|addr| unsafe { &*(addr as *const _) })
     }
 
     pub fn next_table_mut(&self, idx: usize) -> Option<&mut PageTable<Lvl::Next>> {
-        self.next_table_address(idx).map(|addr| unsafe { &mut *(addr as *mut _)})
+        self.next_table_address(idx).map(|addr| unsafe { &mut *(addr as *mut _) })
     }
 
-    pub fn next_table_create<A>(&mut self, idx: usize, alloc: &mut A) 
-        -> &mut PageTable<Lvl::Next> 
-        where A: FrameAllocator {
+    pub fn next_table_create<A>(&mut self, idx: usize, alloc: &mut A) -> &mut PageTable<Lvl::Next>
+        where A: FrameAllocator
+    {
 
         if self.next_table(idx).is_none() {
             assert!(!self.entries[idx].flags().contains(HUGE_PAGE));

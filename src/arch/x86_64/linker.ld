@@ -1,6 +1,7 @@
 ENTRY(start)
 
 SECTIONS {
+
     . = 1M;
 
     .boot :
@@ -11,6 +12,7 @@ SECTIONS {
     .text :
     {
         *(.text .text.*)
+        KEEP(*(.text.intr))
     }
 
     .rodata : {
@@ -19,5 +21,9 @@ SECTIONS {
 
     .data.rel.ro : {
         *(.data.rel.ro.local*) *(.data.rel.ro .data.rel.ro.*)
+    }
+
+    .data : {
+        *(.data .data.*)
     }
 }

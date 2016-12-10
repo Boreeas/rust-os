@@ -3,7 +3,7 @@ struct CpuIdResult {
     eax: u32,
     ebx: u32,
     ecx: u32,
-    edx: u32
+    edx: u32,
 }
 
 fn cpuid(id: u32) -> CpuIdResult {
@@ -22,7 +22,7 @@ fn cpuid(id: u32) -> CpuIdResult {
 }
 
 #[link(name = "cpuid")]
-extern {
+extern "C" {
     fn internal_cpuid(code: u32, ptr: *mut CpuIdResult);
 }
 
@@ -35,23 +35,24 @@ extern {
 
 
 #[derive(Debug)]
+#[allow(non_camel_case_types)]
 pub enum Vendor {
     OLD_AMD, // "AMDisbetter!"
-    AMD,     // "AuthenticAMD"
-    INTEL,   // "GenuineIntel"
+    AMD, // "AuthenticAMD"
+    INTEL, // "GenuineIntel"
     OLD_TRANSMETA, // "TransmetaCPU"
-    TRANSMETA,     // "GenuineTMx86"
-    CYRIX,   // "CyrixInstead"
+    TRANSMETA, // "GenuineTMx86"
+    CYRIX, // "CyrixInstead"
     CENTAUR, // "CentaurHauls"
-    NEXGEN,  // "NexGenDriven"
-    UMC,     // "UMC UMC UMC "
-    SIS,     // "SiS SiS SiS "
-    NSC,     // "Geode by NSC"
-    RISE,    // "RiseRiseRise"
+    NEXGEN, // "NexGenDriven"
+    UMC, // "UMC UMC UMC "
+    SIS, // "SiS SiS SiS "
+    NSC, // "Geode by NSC"
+    RISE, // "RiseRiseRise"
 }
 
 impl Vendor {
-    fn for_name(name: &[u8;12]) -> Vendor {
+    fn for_name(name: &[u8; 12]) -> Vendor {
         use self::Vendor::*;
 
         match name {
@@ -67,7 +68,7 @@ impl Vendor {
             b"SiS SiS SiS " => SIS,
             b"Geode by NSC" => NSC,
             b"RiseRiseRise" => RISE,
-            vendor         => panic!("Unknown CPU Vendor: {:?}", vendor)
+            vendor => panic!("Unknown CPU Vendor: {:?}", vendor),
         }
     }
 }
@@ -81,11 +82,18 @@ pub fn get_vendor() -> Vendor {
         edx
     } = cpuid(0);
 
-    let buf = [
-        ebx as u8, (ebx >> 8) as u8, (ebx >> 16) as u8, (ebx >> 24) as u8,
-        edx as u8, (edx >> 8) as u8, (edx >> 16) as u8, (edx >> 24) as u8,
-        ecx as u8, (ecx >> 8) as u8, (ecx >> 16) as u8, (ecx >> 24) as u8               
-    ];
+    let buf = [ebx as u8,
+               (ebx >> 8) as u8,
+               (ebx >> 16) as u8,
+               (ebx >> 24) as u8,
+               edx as u8,
+               (edx >> 8) as u8,
+               (edx >> 16) as u8,
+               (edx >> 24) as u8,
+               ecx as u8,
+               (ecx >> 8) as u8,
+               (ecx >> 16) as u8,
+               (ecx >> 24) as u8];
 
     Vendor::for_name(&buf)
 }

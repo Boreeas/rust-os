@@ -1,4 +1,5 @@
 arch ?= x86_64
+var ?= foo
 target ?= x86_64-unknown-none-gnu
 rust_os := target/$(target)/debug/libos.a
 kernel := build/kernel-$(arch).bin
@@ -21,15 +22,19 @@ clean:
 	@rm -r build
 
 run: $(iso)
-	@qemu-system-x86_64 -hda $(iso)
+	@qemu-system-x86_64 -hda $(iso) -s -d int -no-reboot
 
 run-release: $(iso)-release
 	@qemu-system-x86_64 -hda $(iso)
 
 debug: $(iso)
-	@qemu-system-x86_64 -s -hda $(iso)
+	@qemu-system-x86_64 -hda $(iso) -s -S -d int -no-reboot
 
-show-asm: cargo-asm $(rust_os) $(assembly_object_files) $(linker_script)
+gdb:
+    @rust-os-gdb/bin/rust-gdb "build/kernel-x86_64.bin" -ex "target remote :1234"
+
+
+show-asm: xargo-asm $(rust_os) $(assembly_object_files) $(linker_script)
 
 iso: $(iso)
 
@@ -47,22 +52,22 @@ $(iso)-release: $(kernel)-release $(grub_cfg)
 	@grub-mkrescue -o $(iso) build/isofiles 2> /dev/null
 	@rm -r build/isofiles
 
-$(kernel): cargo $(rust_os) $(assembly_object_files) $(linker_script)
-	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
+$(kernel): xargo $(rust_os) $(assembly_object_files) $(linker_script)
+	@ld -Map=ldmap.txt -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
-$(kernel)-release: cargo-release $(rust_os) $(assembly_object_files) $(linker_script)
+$(kernel)-release: xargo-release $(rust_os) $(assembly_object_files) $(linker_script)
 	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
 libs: build/arch/$(arch)/libcpuid.a build/arch/$(arch)/libinterrupts.a
 
-cargo-release: libs
-	@cargo rustc --target $(target) --release -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid -linterrupts
+xargo-release: libs
+	@xargo rustc --target $(target) --release -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid -linterrupts
 
-cargo: libs
-	@cargo rustc --target $(target) -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid -linterrupts
+xargo: libs
+	@xargo rustc --target $(target) -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid -linterrupts
 
-cargo-asm:
-	@cargo rustc --target $(target) -- -Z no-landing-pads --emit asm
+xargo-asm:
+	@xargo rustc --target $(target) -- -Z no-landing-pads --emit asm
 
 build/arch/$(arch)/lib%.a: build/arch/$(arch)/%.o
 	@ar r $@ $<

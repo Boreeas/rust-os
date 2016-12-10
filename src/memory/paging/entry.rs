@@ -2,7 +2,7 @@ use memory::Frame;
 
 // Page aligned address of the next frame
 // Bits 12-51 of a page entry
-const ADDR_MASK: usize = 0x000f_ffff_ffff_f000; 
+const ADDR_MASK: usize = 0x000f_ffff_ffff_f000;
 
 
 pub struct Entry(u64);
