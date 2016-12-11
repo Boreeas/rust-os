@@ -1,6 +1,6 @@
 #![feature(lang_items, unique, slice_patterns)]
 #![feature(const_fn, asm, naked_functions)]
-#![feature(iter_min_by)]
+#![feature(iter_min_by, core_intrinsics)]
 
 #![no_std]
 #![allow(dead_code)]
@@ -8,6 +8,7 @@
 extern crate rlibc;
 extern crate spin;
 extern crate multiboot2;
+#[macro_use]
 extern crate x86;
 #[macro_use]
 extern crate bitflags;
@@ -129,9 +130,9 @@ pub extern "C" fn rust_main(multiboot_information_addr: usize) {
                 set_color!(LIGHT_GRAY);
                 println!("> trigger");
                 set_color!(CYAN);
-                println!("Triggering page fault");
-                set_color!(RED);
-                unsafe { *(0xdeadbeaf as *mut u64) = 42 };
+                println!("Triggering breakpoint");
+
+                unsafe { int!(3); }
             }
             _ => {}
             // Meta(mk) => println!("Meta Key: {:?}", mk),

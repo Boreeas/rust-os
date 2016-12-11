@@ -65,19 +65,54 @@ bitflags! {
     }
 }
 
+macro_rules! save_scratch_registers {
+    () => {
+        asm!("push rax
+              push rcx
+              push rdx
+              push rsi
+              push rdi
+              push r8
+              push r9
+              push r10
+              push r11
+        " :::: "intel", "volatile");
+    }
+}
+
+macro_rules! restore_scratch_registers {
+    () => {
+        asm!("pop r11
+              pop r10
+              pop r9
+              pop r8
+              pop rdi
+              pop rsi
+              pop rdx
+              pop rcx
+              pop rax" 
+              :::: "intel", "volatile");
+    }
+}
+
 macro_rules! handler {
     ($name:ident) => ({
         #[naked]
         extern "C" fn wrapper() -> ! {
             unsafe {
+                save_scratch_registers!();
+
                 asm!("mov rdi, rsp
-                      sub rsp, 8 // align the stack pointer
+                      add rdi, 9*8 // offset by reg push
                       call $0"
                       :: "i"($name as extern "C" fn(&ExceptionStackFrame))
-                      : "rdi" : "intel");
-            }
+                      : "rdi" : "intel", "volatile");
 
-            loop {}
+                restore_scratch_registers!();
+                asm!("iretq" :::: "intel", "volatile");
+
+                ::core::intrinsics::unreachable();
+            }
         }
         wrapper
     })
@@ -88,15 +123,22 @@ macro_rules! handler_with_error {
         #[naked]
         extern "C" fn wrapper() -> ! {
             unsafe {
-                asm!("pop rsi
-                      mov rdi, rsp;
-                      sub rsp, 8
+                save_scratch_registers!();
+
+                asm!("pop rsi, [rsp+9*8]
+                      mov rdi, rsp
+                      add rdi, 10*8
                       call $0"
                       :: "i"($name as extern "C" fn(&ExceptionStackFrame, u64))
                       : "rdi", "rsi" : "intel");
-            }
 
-            loop {}
+                restore_scratch_registers!();
+                asm!("add rsp, 8
+                      iretq"
+                      :::: "intel", "volatile");
+
+                ::core::intrinsics::unreachable();
+            }
         }
         wrapper
     })
@@ -146,6 +188,7 @@ lazy_static! {
     pub static ref IDT: Idt = {
         let mut idt = Idt::new();
         idt.set_handler(0, handler!(divide_by_zero_handler));
+        idt.set_handler(3, handler!(breakpoint_handler));
         idt.set_handler(6, handler!(invalid_opcode_handler));
         idt.set_handler(14, handler_with_error!(page_fault_handler));
         idt
