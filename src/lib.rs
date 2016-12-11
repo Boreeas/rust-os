@@ -129,16 +129,9 @@ pub extern "C" fn rust_main(multiboot_information_addr: usize) {
                 set_color!(LIGHT_GRAY);
                 println!("> trigger");
                 set_color!(CYAN);
-                println!("Triggering division-by-zero");
-                unsafe {
-                    asm! (
-                        "mov eax, 0\nmov ebx, 0\ndiv ebx"
-                        :
-                        :
-                        : "eax"
-                        : "intel"
-                    )
-                }
+                println!("Triggering page fault");
+                set_color!(RED);
+                unsafe { *(0xdeadbeaf as *mut u64) = 42 };
             }
             _ => {}
             // Meta(mk) => println!("Meta Key: {:?}", mk),

@@ -57,7 +57,7 @@ pub fn setup_apic<A>(alloc: &mut A)
     let log = log!("Setting up APIC");
     disable_8259_pic();
     map_apic_registers(alloc);
-    interrupts::init_idt();
+    interrupts::IDT.load();
     enable_interrupts();
 
 
