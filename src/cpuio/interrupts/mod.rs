@@ -205,6 +205,8 @@ extern "C" fn divide_by_zero_handler(stack_frame: &ExceptionStackFrame) {
     println!("division by zero");
     set_color!(LIGHT_GRAY);
     println!("{:#?}", stack_frame);
+    
+    loop {}
 }
 
 extern "C" fn invalid_opcode_handler(stack_frame: &ExceptionStackFrame) {
@@ -216,6 +218,8 @@ extern "C" fn invalid_opcode_handler(stack_frame: &ExceptionStackFrame) {
     println!("invalid opcode at {:#x}", stack_frame.instruction_pointer);
     set_color!(LIGHT_GRAY);
     println!("{:#?}", stack_frame);
+
+    loop {}
 }
 
 extern "C" fn page_fault_handler(stack_frame: &ExceptionStackFrame, errno: u64) {
@@ -230,6 +234,8 @@ extern "C" fn page_fault_handler(stack_frame: &ExceptionStackFrame, errno: u64) 
         PageFaultErrorCode::from_bits(errno).unwrap());
     set_color!(LIGHT_GRAY);
     println!("{:#?}", stack_frame);
+
+    loop {}
 }
 
 extern "C" fn breakpoint_handler(stack_frame: &ExceptionStackFrame) {

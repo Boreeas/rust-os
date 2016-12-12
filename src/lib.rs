@@ -135,6 +135,14 @@ pub extern "C" fn rust_main(multiboot_information_addr: usize) {
 
                 unsafe { int!(3); }
             }
+            Char('z') => {
+                set_color!(LIGHT_GRAY);
+                println!("> trigger2");
+                set_color!(CYAN);
+                println!("Triggering page fault");
+
+                unsafe { *(0xdeadbeef as *mut _) = 42 }
+            }
             _ => {}
             // Meta(mk) => println!("Meta Key: {:?}", mk),
             // Char(c)  => println!("Char Read: {:?}", c)
