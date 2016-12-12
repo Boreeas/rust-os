@@ -3,6 +3,7 @@
 use core::cell::Cell;
 use core::ptr::Unique;
 use core::fmt::{Write, Result};
+use core::mem;
 use spin::Mutex;
 
 
@@ -16,6 +17,9 @@ pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
     scroll_count: 0,
     color_code: Cell::new(ColorCode::new(Color::WHITE, Color::BLACK)),
     buffer: unsafe { Unique::new(0xb8000 as *mut _) },
+    escape_sequence_step: 0,
+    escape_accumulator_1: 0,
+    escape_accumulator_2: 0,
 });
 
 
@@ -84,6 +88,17 @@ pub enum Color {
     PINK = 13,
     YELLOW = 14,
     WHITE = 15,
+}
+
+impl Color {
+    pub fn from_u8(val: u8) -> Option<Color> {
+        if val <= 15 {
+            // Safe: Color values go ffrom 0..15
+            Some(unsafe { mem::transmute(val) })
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone,Copy)]
@@ -166,6 +181,10 @@ pub struct Writer {
     color_code: Cell<ColorCode>,
     buffer: Unique<Buffer>,
     scroll_count: u32, // 4 billion lines ought to be enough for everybody
+    // for escape sequences
+    escape_sequence_step: u8,
+    escape_accumulator_1: u8,
+    escape_accumulator_2: u8,
 }
 
 impl Writer {
@@ -176,13 +195,17 @@ impl Writer {
             scroll_count: 0,
             color_code: Cell::new(ColorCode::new(Color::LIGHT_GREEN, Color::BLACK)),
             buffer: unsafe { Unique::new(0xb8000 as *mut _) },
+            escape_sequence_step: 0,
+            escape_accumulator_1: 0,
+            escape_accumulator_2: 0,
         }
     }
 
     pub fn write_byte(&mut self, byte: u8) {
-        match byte {
-            b'\n' => self.new_line(),
-            byte => {
+        match (self.escape_sequence_step, byte) {
+            (0, b'\n') => self.new_line(),
+            (0, b'\\') => self.escape_sequence_step = 1,
+            (0, byte) => {
                 if self.column_position >= SCREEN_WIDTH {
                     self.new_line();
                 }
@@ -192,6 +215,45 @@ impl Writer {
 
                 self.write_byte_at(byte, row, col);
                 self.column_position += 1;
+            },
+            (_, b',') => self.escape_sequence_step += 1,
+            (_, b';') => {
+                match (Color::from_u8(self.escape_accumulator_1),
+                        Color::from_u8(self.escape_accumulator_2)) {
+
+                    (Some(fore), Some(back)) => switch_color(fore, back),
+                    _ => {}
+                }
+
+                self.escape_sequence_step = 0;
+                self.escape_accumulator_1 = 0;
+                self.escape_accumulator_2 = 0;
+            },
+            (1, byte) if byte >= b'0' && byte <= b'9' => {
+                if self.escape_accumulator_1 >= 26 {
+                    self.escape_sequence_step = 0;
+                    self.escape_accumulator_1 = 0;
+                    self.escape_accumulator_2 = 0;
+                } else {
+                    self.escape_accumulator_1 *= 10;
+                    self.escape_accumulator_1 += byte - b'0';
+                }
+            },
+            (2, byte) if byte >= b'0' && byte <= b'9' => {
+                if self.escape_accumulator_2 >= 26 {
+                    self.escape_sequence_step = 0;
+                    self.escape_accumulator_1 = 0;
+                    self.escape_accumulator_2 = 0;
+                } else {
+                    self.escape_accumulator_2 *= 10;
+                    self.escape_accumulator_2 += byte - b'0';
+                }
+            },
+            (_, byte) => {
+                self.escape_sequence_step = 0;
+                self.escape_accumulator_1 = 0;
+                self.escape_accumulator_2 = 0;
+                self.write_byte(byte);
             }
         }
     }
