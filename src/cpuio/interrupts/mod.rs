@@ -1,7 +1,7 @@
 mod exceptions;
 
 use spin::Mutex;
-use self::exceptions::{ExceptionStackFrame, PageFaultErrorCode};
+use self::exceptions::*;
 
 pub type HandlerFunc = extern "C" fn() -> !;
 const NUM_ENTRIES: usize = 256;
@@ -128,12 +128,14 @@ macro_rules! handler_with_error {
                 asm!("mov rsi, [rsp+9*8]
                       mov rdi, rsp
                       add rdi, 10*8
-                      call $0"
+                      sub rsp, 8 // align stack: 9 regs pushed + 6 error qwords
+                      call $0
+                      add rsp, 8"
                       :: "i"($name as extern "C" fn(&ExceptionStackFrame, u64))
                       : "rdi", "rsi" : "intel");
 
                 restore_scratch_registers!();
-                asm!("add rsp, 8
+                asm!("add rsp, 8 // pop error code
                       iretq"
                       :::: "intel", "volatile");
 
@@ -196,55 +198,3 @@ lazy_static! {
 }
 
 
-extern "C" fn divide_by_zero_handler(stack_frame: &ExceptionStackFrame) {
-    use ::vga_buffer::Color::*;
-
-    set_color!(RED);
-    print!("\nERROR: ");
-    set_color!(WHITE);
-    println!("division by zero");
-    set_color!(LIGHT_GRAY);
-    println!("{:#?}", stack_frame);
-    
-    loop {}
-}
-
-extern "C" fn invalid_opcode_handler(stack_frame: &ExceptionStackFrame) {
-    use ::vga_buffer::Color::*;
-
-    set_color!(RED);
-    print!("\nERROR: ");
-    set_color!(WHITE);
-    println!("invalid opcode at {:#x}", stack_frame.instruction_pointer);
-    set_color!(LIGHT_GRAY);
-    println!("{:#?}", stack_frame);
-
-    loop {}
-}
-
-extern "C" fn page_fault_handler(stack_frame: &ExceptionStackFrame, errno: u64) {
-    use ::vga_buffer::Color::*;
-    use ::x86::shared::control_regs;
-
-    set_color!(RED);
-    print!("\nERROR: ");
-    set_color!(WHITE);
-    println!("page fault trying to access 0x{:x} ({:?})", 
-        unsafe { control_regs::cr2() },
-        PageFaultErrorCode::from_bits(errno).unwrap());
-    set_color!(LIGHT_GRAY);
-    println!("{:#?}", stack_frame);
-
-    loop {}
-}
-
-extern "C" fn breakpoint_handler(stack_frame: &ExceptionStackFrame) {
-    use ::vga_buffer::Color::*;
-    
-    set_color!(RED);
-    print!("\nBREAKPOINT: ");
-    set_color!(WHITE);
-    println!("At instruction {:#x}", stack_frame.instruction_pointer);
-    set_color!(LIGHT_GRAY);
-    println!("{:#?}", stack_frame);
-}
