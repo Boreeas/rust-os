@@ -58,13 +58,13 @@ $(kernel): xargo $(rust_os) $(assembly_object_files) $(linker_script)
 $(kernel)-release: xargo-release $(rust_os) $(assembly_object_files) $(linker_script)
 	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
-libs: build/arch/$(arch)/libcpuid.a build/arch/$(arch)/libinterrupts.a
+libs: build/arch/$(arch)/libcpuid.a
 
 xargo-release: libs
 	@xargo rustc --target $(target) --release -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid -linterrupts
 
 xargo: libs
-	@xargo rustc --target $(target) -- -Z no-landing-pads -L build/arch/$(arch) -lcpuid -linterrupts
+	@xargo rustc --verbose --target $(target) -- --verbose -Z no-landing-pads -L build/arch/$(arch) -lcpuid -linterrupts
 
 xargo-asm:
 	@xargo rustc --target $(target) -- -Z no-landing-pads --emit asm
