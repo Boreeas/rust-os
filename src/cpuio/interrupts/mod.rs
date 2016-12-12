@@ -1,6 +1,4 @@
 mod exceptions;
-
-use spin::Mutex;
 use self::exceptions::*;
 
 pub type HandlerFunc = extern "C" fn() -> !;

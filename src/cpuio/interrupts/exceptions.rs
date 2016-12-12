@@ -19,8 +19,6 @@ bitflags! (
 );
 
 pub extern "C" fn divide_by_zero_handler(stack_frame: &ExceptionStackFrame) {
-    use ::vga_buffer::Color::*;
-
     set_color!(RED);
     print!("\nERROR: ");
     set_color!(WHITE);
@@ -32,8 +30,6 @@ pub extern "C" fn divide_by_zero_handler(stack_frame: &ExceptionStackFrame) {
 }
 
 pub extern "C" fn invalid_opcode_handler(stack_frame: &ExceptionStackFrame) {
-    use ::vga_buffer::Color::*;
-
     set_color!(RED);
     print!("\nERROR: ");
     set_color!(WHITE);
@@ -45,7 +41,6 @@ pub extern "C" fn invalid_opcode_handler(stack_frame: &ExceptionStackFrame) {
 }
 
 pub extern "C" fn page_fault_handler(stack_frame: &ExceptionStackFrame, errno: u64) {
-    use ::vga_buffer::Color::*;
     use ::x86::shared::control_regs;
 
     set_color!(RED);
@@ -61,8 +56,6 @@ pub extern "C" fn page_fault_handler(stack_frame: &ExceptionStackFrame, errno: u
 }
 
 pub extern "C" fn breakpoint_handler(stack_frame: &ExceptionStackFrame) {
-    use ::vga_buffer::Color::*;
-    
     set_color!(RED);
     print!("\nBREAKPOINT: ");
     set_color!(WHITE);

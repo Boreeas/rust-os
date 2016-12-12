@@ -98,7 +98,7 @@ impl FrameAllocator for AreaFrameAllocator {
         return Some(frame);
     }
 
-    fn dealloc(&mut self, frame: Frame) {
+    fn dealloc(&mut self, _: Frame) {
         // unimplemented!()
     }
 }

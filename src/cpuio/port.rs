@@ -108,10 +108,10 @@ impl<T: CpuIoValue> UnsafePort<T> {
     }
 
     pub unsafe fn read(&self) -> T {
-        unsafe { T::read(self.port) }
+        T::read(self.port)
     }
 
     pub unsafe fn write(&self, value: T) {
-        unsafe { T::write(self.port, value) }
+        T::write(self.port, value)
     }
 }

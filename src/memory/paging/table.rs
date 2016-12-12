@@ -18,7 +18,7 @@ pub const P1_TABLE_MASK: usize = 0o177777_777_000_000_000_0000;
 
 
 pub trait TableLevel {}
-trait HierarchicalLevel: TableLevel {
+pub trait HierarchicalLevel: TableLevel {
     type Next: TableLevel;
 }
 
