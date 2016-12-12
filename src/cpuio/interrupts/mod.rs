@@ -125,7 +125,7 @@ macro_rules! handler_with_error {
             unsafe {
                 save_scratch_registers!();
 
-                asm!("pop rsi, [rsp+9*8]
+                asm!("mov rsi, [rsp+9*8]
                       mov rdi, rsp
                       add rdi, 10*8
                       call $0"
