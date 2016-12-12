@@ -8,6 +8,7 @@
 extern crate rlibc;
 extern crate spin;
 extern crate multiboot2;
+
 #[macro_use]
 extern crate x86;
 #[macro_use]
@@ -143,9 +144,14 @@ pub extern "C" fn rust_main(multiboot_information_addr: usize) {
 }
 
 #[lang = "eh_personality"]
-extern "C" fn eh_personality() {}
+#[no_mangle]
+extern "C" fn eh_personality() {
+    set_color!(RED);
+    println!("\n\neh personality called");
+}
 
 #[lang = "panic_fmt"]
+#[no_mangle]
 extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &str, line: u32) -> ! {
     set_color!(RED);
     print!("\n\nPANIC in ");
