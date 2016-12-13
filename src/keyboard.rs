@@ -138,3 +138,7 @@ impl Keyboard {
         }
     }
 }
+
+pub fn next_key() -> Key {
+    KEYBOARD.lock().next_key()
+}

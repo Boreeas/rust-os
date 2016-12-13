@@ -62,4 +62,7 @@ pub extern "C" fn breakpoint_handler(stack_frame: &ExceptionStackFrame) {
     println!("At instruction {:#x}", stack_frame.instruction_pointer);
     set_color!(LIGHT_GRAY);
     println!("{:#?}", stack_frame);
+
+    println!("Press any key to continue");
+    ::keyboard::next_key();
 }

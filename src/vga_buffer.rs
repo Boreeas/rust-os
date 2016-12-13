@@ -204,7 +204,9 @@ impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
         match (self.escape_sequence_step, byte) {
             (0, b'\n') => self.new_line(),
-            (0, b'\\') => self.escape_sequence_step = 1,
+            (0, b'\\') => {
+                self.escape_sequence_step = 1;
+            },
             (0, byte) => {
                 if self.column_position >= SCREEN_WIDTH {
                     self.new_line();
@@ -216,12 +218,14 @@ impl Writer {
                 self.write_byte_at(byte, row, col);
                 self.column_position += 1;
             },
-            (_, b',') => self.escape_sequence_step += 1,
+            (1, b',') => self.escape_sequence_step = 2,
             (_, b';') => {
                 match (Color::from_u8(self.escape_accumulator_1),
                         Color::from_u8(self.escape_accumulator_2)) {
 
-                    (Some(fore), Some(back)) => switch_color(fore, back),
+                    (Some(front), Some(back)) => {
+                        self.color_code.set(ColorCode::new(front, back));
+                    },
                     _ => {}
                 }
 
