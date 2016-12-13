@@ -186,11 +186,21 @@ impl Idt {
 
 lazy_static! {
     pub static ref IDT: Idt = {
+        let log = log!("  Registering interrupt handlers");
+        set_color!(LIGHT_GRAY);
+        
         let mut idt = Idt::new();
+        println!("    Divide-by-zero");
         idt.set_handler(0, handler!(divide_by_zero_handler));
+        println!("    Breakpoint");
         idt.set_handler(3, handler!(breakpoint_handler));
+        println!("    Invalid instruction");
         idt.set_handler(6, handler!(invalid_opcode_handler));
+        println!("    Page Fault");
         idt.set_handler(14, handler_with_error!(page_fault_handler));
+        
+        log.ok();
+
         idt
     };
 }

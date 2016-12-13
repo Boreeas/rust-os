@@ -133,14 +133,10 @@ pub extern "C" fn eh_personality() {
 #[no_mangle]
 pub extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &str, line: u32) -> ! {
     set_color!(RED);
-    print!("\n\nPANIC in ");
-    set_color!(LIGHT_GRAY);
-    print!("{}", file);
-    set_color!(RED);
-    print!(" at line ");
-    set_color!(LIGHT_GRAY);
-    print!("{}", line);
-    set_color!(RED);
-    println!(":\n    {}", fmt);
+    println!("\n\n\\{};PANIC in \\{};{}\\{}; at line \\{};{}\\{};:",
+        RED as u8, 
+        LIGHT_GRAY as u8, file, RED as u8,
+        LIGHT_GRAY as u8, line, RED as u8);
+    println!("    {}", fmt);
     loop {}
 }

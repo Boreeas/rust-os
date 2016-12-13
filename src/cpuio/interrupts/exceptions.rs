@@ -1,3 +1,5 @@
+use ::vga_buffer::Color::*;
+
 #[repr(C,packed)]
 #[derive(Copy,Clone,Debug)]
 pub struct ExceptionStackFrame {
@@ -19,23 +21,16 @@ bitflags! (
 );
 
 pub extern "C" fn divide_by_zero_handler(stack_frame: &ExceptionStackFrame) {
-    set_color!(RED);
-    print!("\nERROR: ");
-    set_color!(WHITE);
-    println!("division by zero");
-    set_color!(LIGHT_GRAY);
-    println!("{:#?}", stack_frame);
+    println!("\\{};\nERROR: \\{};division by zero", RED as u8, WHITE as u8);
+    println!("\\{};{:#?}", LIGHT_GRAY as u8, stack_frame);
     
     loop {}
 }
 
 pub extern "C" fn invalid_opcode_handler(stack_frame: &ExceptionStackFrame) {
-    set_color!(RED);
-    print!("\nERROR: ");
-    set_color!(WHITE);
-    println!("invalid opcode at {:#x}", stack_frame.instruction_pointer);
-    set_color!(LIGHT_GRAY);
-    println!("{:#?}", stack_frame);
+    println!("\\{};\nERROR: \\{};invalid opcode at {:#x}",
+        RED as u8, WHITE as u8, stack_frame.instruction_pointer);
+    println!("\\{};{:#?}", LIGHT_GRAY as u8, stack_frame);
 
     loop {}
 }
@@ -43,25 +38,19 @@ pub extern "C" fn invalid_opcode_handler(stack_frame: &ExceptionStackFrame) {
 pub extern "C" fn page_fault_handler(stack_frame: &ExceptionStackFrame, errno: u64) {
     use ::x86::shared::control_regs;
 
-    set_color!(RED);
-    print!("\nERROR: ");
-    set_color!(WHITE);
-    println!("page fault trying to access 0x{:x} ({:?})", 
+    println!("\\{};\nERROR: \\{};page fault trying to access 0x{:x} ({:?})", 
+        RED as u8, WHITE as u8,
         unsafe { control_regs::cr2() },
         PageFaultErrorCode::from_bits(errno).unwrap());
-    set_color!(LIGHT_GRAY);
-    println!("{:#?}", stack_frame);
+    println!("\\{};{:#?}", LIGHT_GRAY as u8, stack_frame);
 
     loop {}
 }
 
 pub extern "C" fn breakpoint_handler(stack_frame: &ExceptionStackFrame) {
-    set_color!(RED);
-    print!("\nBREAKPOINT: ");
-    set_color!(WHITE);
-    println!("At instruction {:#x}", stack_frame.instruction_pointer);
-    set_color!(LIGHT_GRAY);
-    println!("{:#?}", stack_frame);
+    println!("\\{};\nBREAKPOINT: \\{};At instruction {:#x}", 
+        RED as u8, WHITE as u8, stack_frame.instruction_pointer);
+    println!("\\{};{:#?}", LIGHT_GRAY as u8, stack_frame);
 
     println!("Press any key to continue");
     ::keyboard::next_key();
