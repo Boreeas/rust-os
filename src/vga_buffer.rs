@@ -24,14 +24,22 @@ pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
 
 
 macro_rules! println {
-    ($fmt:expr) => (print!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
+    ($fmt:expr) => ({
+        print!($fmt);
+        $crate::vga_buffer::WRITER.lock().new_line();
+    });
+    ($fmt:expr, $($arg:tt)*) => ({
+        print!($fmt, $($arg)*);
+        $crate::vga_buffer::WRITER.lock().new_line();
+    });
 }
 
 macro_rules! print {
     ($($arg:tt)*) => ({
-            use core::fmt::Write;
-            $crate::vga_buffer::WRITER.lock().write_fmt(format_args!($($arg)*)).unwrap();
+        use core::fmt::Write;
+        match format_args!($($arg)*) {
+            fmt => $crate::vga_buffer::WRITER.lock().write_fmt(fmt).unwrap()
+        }
     });
 }
 
@@ -290,7 +298,7 @@ impl Writer {
         unsafe { self.buffer.get_mut() }
     }
 
-    fn new_line(&mut self) {
+    pub fn new_line(&mut self) {
         if self.row_position < SCREEN_HEIGHT - 1 {
             self.row_position += 1;
         } else {
