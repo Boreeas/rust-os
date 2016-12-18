@@ -2,7 +2,7 @@
 
 use core::cell::Cell;
 use core::ptr::Unique;
-use core::fmt::{Write, Result};
+use core::fmt::{self, Write, Result};
 use core::mem;
 use spin::Mutex;
 
@@ -37,6 +37,10 @@ macro_rules! println {
 macro_rules! print {
     ($($arg:tt)*) => ({
         use core::fmt::Write;
+        // Don't force people to import Color everywhere
+        #[allow(unused_imports)]
+        use $crate::vga_buffer::Color::*;
+
         match format_args!($($arg)*) {
             fmt => $crate::vga_buffer::WRITER.lock().write_fmt(fmt).unwrap()
         }
@@ -79,6 +83,7 @@ macro_rules! reset_color {
 
 #[repr(u8)]
 #[allow(non_camel_case_types)]
+#[derive(Copy,Clone)]
 pub enum Color {
     BLACK = 0,
     BLUE = 1,
@@ -101,11 +106,17 @@ pub enum Color {
 impl Color {
     pub fn from_u8(val: u8) -> Option<Color> {
         if val <= 15 {
-            // Safe: Color values go ffrom 0..15
+            // Safe: Color values go from 0..15
             Some(unsafe { mem::transmute(val) })
         } else {
             None
         }
+    }
+}
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result {
+        write!(f, "\\{};", *self as u8)
     }
 }
 
@@ -115,6 +126,12 @@ pub struct ColorCode(u8);
 impl ColorCode {
     pub const fn new(foreground: Color, background: Color) -> ColorCode {
         ColorCode((background as u8) << 4 | (foreground as u8))
+    }
+}
+
+impl fmt::Display for ColorCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result {
+        write!(f, "\\{},{};", self.0 >> 4, self.0 & 0xf)
     }
 }
 
