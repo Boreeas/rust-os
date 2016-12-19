@@ -135,7 +135,7 @@ macro_rules! handler_with_error {
                 restore_scratch_registers!();
                 asm!("add rsp, 8 // pop error code
                       iretq"
-                      :::: "intel", "volatile");
+                      ::: "rsp" : "intel", "volatile");
 
                 ::core::intrinsics::unreachable();
             }

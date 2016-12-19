@@ -26,6 +26,7 @@ mod memory;
 mod cpuio;
 mod keyboard;
 mod cpuid;
+mod control_regs;
 
 use memory::*;
 use keyboard::Key::*;
@@ -40,11 +41,13 @@ pub extern "C" fn rust_main(multiboot_information_addr: usize) {
     let boot_info = unsafe { multiboot2::load(multiboot_information_addr) };
     let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
 
-    // println!("memory areas:");
-    // for area in memory_map_tag.memory_areas() {
-    // println!("    start: 0x{:x}, length: 0x{:x}", area.base_addr, area.length);
-    // }
-    //
+    /*
+    println!("memory areas:");
+     for area in memory_map_tag.memory_areas() {
+     println!("    start: 0x{:x}, length: 0x{:x}", area.base_addr, area.length);
+    }
+    */
+    
 
     let elf_sections_tag = boot_info.elf_sections_tag().expect("Elf-sections tag required");
 
@@ -83,7 +86,7 @@ pub extern "C" fn rust_main(multiboot_information_addr: usize) {
     
     cpuio::setup_apic(&mut alloc);
 
-
+    
     loop {
         match keyboard::next_key() {
             Meta(Esc) | Char('q') => {
@@ -112,6 +115,42 @@ pub extern "C" fn rust_main(multiboot_information_addr: usize) {
                 println!("{}Triggering page fault", CYAN);
 
                 unsafe { *(0xdeadbeef as *mut _) = 42 }
+            }
+            Char('e') => {
+                println!("{}> efer", LIGHT_GRAY);
+                println!("{}EFER:  {}{:?}", 
+                  LIGHT_GRAY, CYAN, 
+                  control_regs::efer::Efer::load());
+            }
+            Char('r') => {
+                println!("{}> rflags", LIGHT_GRAY as u8);
+                println!("{}RFlags: {}{:?}", 
+                    LIGHT_GRAY, CYAN, 
+                    control_regs::rflags::RFlags::load());
+            }
+            Char('0') => {
+                println!("{}> cr0", LIGHT_GRAY);
+                println!("{}CR0: {}{:?}", 
+                    LIGHT_GRAY, CYAN,
+                    control_regs::cr0::CR0::load());
+            }
+            Char('3') => {
+                println!("{}> cr3", LIGHT_GRAY);
+                println!("{}Page table physical address: {}{:#x}", 
+                    LIGHT_GRAY, CYAN,
+                    control_regs::cr3::p4_table_address());
+            }
+            Char('4') => {
+                println!("{}> cr4", LIGHT_GRAY);
+                println!("{}CR4: {}{:?}", 
+                    LIGHT_GRAY, CYAN,
+                    control_regs::cr4::CR4::load());
+            }
+            Char('8') => {
+                println!("{}> cr8", LIGHT_GRAY);
+                println!("{}Task Priority Level: {}{:?}", 
+                    LIGHT_GRAY, CYAN,
+                    control_regs::cr8::get_task_priority_level());
             }
             _ => {}
             // Meta(mk) => println!("Meta Key: {:?}", mk),
